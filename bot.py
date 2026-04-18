@@ -587,13 +587,47 @@ async def on_message(message):
 
     for row in reader:
         try:
-            sport = row["Sport"].strip()
             league = row["League"].strip()
-            match = row["Match"].strip()
-            bet = row["Bet"].strip()
-            time_str = row["Time"].strip()
-            confidence = row["Confidence"].strip()
-            units = float(row["Units"])
+            time_eastern = row["Time (Eastern)"].strip()
+            player1 = row["Player 1"].strip()
+            player2 = row["Player 2"].strip()
+            play_type = row["Play"].strip()
+            history = row["History"].strip()
+            
+            # Extract sport from league name (TT = table tennis)
+            if any(tt_league in league.lower() for tt_league in ["setka", "czech", "elite", "cup"]):
+                sport = "TT"
+            else:
+                sport = "TT"  # Default to TT since all provided data is table tennis
+            
+            # Parse time - convert "04/17 07:30 PM" to "7:30 PM"
+            try:
+                time_parts = time_eastern.split()
+                time_only = f"{time_parts[-2]} {time_parts[-1]}"  # Get "07:30 PM"
+                # Convert to 12-hour format without leading zero
+                time_obj = datetime.strptime(time_only, "%I:%M %p")
+                time_str = time_obj.strftime("%-I:%M %p")  # %-I removes leading zero
+            except:
+                time_str = time_eastern
+            
+            # Create match string from player names
+            match = f"{player1} vs {player2}"
+            
+            # Default confidence to Normal and units to 1
+            # User can manually assign confidence later if needed
+            confidence = "Normal"
+            units = 1
+            
+            # Determine play type for bet description
+            if "4+" in play_type:
+                bet = "4+ SET"
+            elif "OVER" in play_type:
+                # Extract the number from history if available
+                bet = "OVER"
+            elif "UNDER" in play_type:
+                bet = "UNDER"
+            else:
+                bet = play_type
             
             plays.append({
                 "sport": sport,
@@ -639,11 +673,6 @@ async def on_message(message):
                 confidence_text = "Normal"
 
             # Format: multi-line display
-            # Sport | League
-            # Match
-            # Bet
-            # Time
-            # EMOJI Confidence | Units
             play_block = (
                 f"{play['sport']} | {play['league']}\n"
                 f"{play['match']}\n"
